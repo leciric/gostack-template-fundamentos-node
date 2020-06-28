@@ -24,42 +24,41 @@ class TransactionsRepository {
   }
 
   public getBalance(): Balance {
-    let income = 0;
-    let outcome = 0;
-
-    const agruparPor = (
-      objetoArray: Array<Transaction>,
-      propriedade: string,
-    ): Transaction => {
-      return objetoArray.reduce((acumulador: Transaction, obj: Transaction) => {
-        const key = obj[propriedade];
-        if (!acumulador[key]) {
-          acumulador[key] = Transaction[];
+    const { income, outcome } = this.transactions.reduce(
+      (accumulator: Balance, transaction: Transaction) => {
+        switch (transaction.type) {
+          case 'income':
+            accumulator.income += Number(transaction.value);
+            break;
+          case 'outcome':
+            accumulator.outcome += Number(transaction.value);
+            break;
+          default:
+            break;
         }
-        if (key === 'income') {
-          income += obj.value;
-        } else if (key === 'outcome') {
-          outcome += obj.value;
-        }
-        return acumulador;
-      });
-    };
-
-    const prop: keyof Transaction = 'type';
-
-    agruparPor(this.transactions, prop);
-
-    const balance = {
-      income,
-      outcome,
-      total: income - outcome,
-    };
-
-    return balance;
+        return accumulator;
+      },
+      {
+        income: 0,
+        outcome: 0,
+        total: 0,
+      },
+    );
+    const total = income - outcome;
+    return { income, outcome, total };
   }
 
   public create({ title, value, type }: Request): Transaction {
     const transaction = new Transaction({ title, value, type });
+
+    if (
+      transaction.type === 'outcome' &&
+      transaction.value > this.getBalance().total
+    ) {
+      throw Error(
+        `This transaction value is more than you have in you account.`,
+      );
+    }
 
     this.transactions.push(transaction);
 
